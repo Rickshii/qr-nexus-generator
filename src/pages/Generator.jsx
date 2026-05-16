@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-import domtoimage from 'dom-to-image-more';
+import html2canvas from 'html2canvas';
 import { 
   Download, Copy, Link, Wifi, Mail, FileText, Phone, MessageCircle, MapPin, 
   User, Smartphone, Send, Image as ImageIcon, Check, Palette, Settings, CreditCard, MessageSquare, Calendar, Zap, Sparkles, LayoutDashboard, Share2
@@ -83,9 +83,7 @@ export default function Generator() {
   
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState(null);
-  const [isDynamic, setIsDynamic] = useState(false);
-  const [shortId, setShortId] = useState(Math.random().toString(36).substring(7));
-  const qrRef = useRef();
+  const exportRef = useRef();
 
   const qrTypes = [
     { id: 'url', label: 'URL', icon: Link },
@@ -108,10 +106,6 @@ export default function Generator() {
   ];
 
   const getQRValue = () => {
-    if (isDynamic) {
-      return `${window.location.origin}/q/${shortId}`;
-    }
-
     switch (activeTab) {
       case 'url':
         if (!url) return 'https://qr-nexus.com';
@@ -159,31 +153,6 @@ export default function Generator() {
     }
   };
 
-  // Persist Dynamic Mapping
-  useEffect(() => {
-    if (isDynamic) {
-      const mappings = JSON.parse(localStorage.getItem('qr_mappings') || '{}');
-      
-      // Calculate the static value that this dynamic QR should redirect to
-      let contentValue = '';
-      const type = activeTab;
-      
-      if (type === 'url') contentValue = url.startsWith('http') ? url : `https://${url}`;
-      else if (type === 'text') contentValue = text;
-      else if (type === 'wifi') contentValue = `WIFI:T:${wifiEncryption};S:${wifiSsid};P:${wifiPassword};H:${wifiHidden ? 'true' : ''};;`;
-      else if (type === 'whatsapp') contentValue = `https://wa.me/${waPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`;
-      else if (type === 'phone') contentValue = `tel:${phone}`;
-      else if (type === 'email') contentValue = `mailto:${emailAddress}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-      else contentValue = url; // Fallback for other types
-
-      mappings[shortId] = {
-        content: contentValue || 'https://qr-nexus.com',
-        type: activeTab,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('qr_mappings', JSON.stringify(mappings));
-    }
-  }, [isDynamic, url, text, waPhone, waText, wifiSsid, wifiPassword, emailAddress, shortId, activeTab]);
 
   const saveQRCode = () => {
     const newQR = {
@@ -193,49 +162,47 @@ export default function Generator() {
       value: getQRValue(),
       date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       scans: Math.floor(Math.random() * 10), // Simulate some initial scans
-      status: isDynamic ? 'Dynamic' : 'Active'
+      status: 'Active'
     };
     const saved = JSON.parse(localStorage.getItem('savedQRs') || '[]');
     localStorage.setItem('savedQRs', JSON.stringify([newQR, ...saved].slice(0, 10)));
   };
 
   const handleDownload = async () => {
-    const element = qrRef.current;
-    if (element) {
-      try {
-        setToast('Preparing high-res export...');
-        
-        // Use dom-to-image for better Tailwind/CSS frame support
-        const dataUrl = await domtoimage.toPng(element, {
-          quality: 1.0,
-          bgcolor: bgColor === '#ffffff' ? '#ffffff' : '#121212',
-          style: {
-            transform: 'scale(2)',
-            transformOrigin: 'top left'
-          },
-          width: element.clientWidth * 2,
-          height: element.clientHeight * 2
-        });
-
-        const a = document.createElement('a');
-        a.download = `QR_Nexus_Pro_${activeTab}_${Date.now()}.png`;
-        a.href = dataUrl;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        saveQRCode();
-        setToast('QR Code with Frame downloaded!');
-        setTimeout(() => setToast(null), 3000);
-      } catch (err) {
-        console.error('Download error:', err);
-        alert('Export failed. Please try again or use the Share button.');
-      }
+    const element = exportRef.current;
+    if (!element) {
+      console.error('Export element not found');
+      return;
+    }
+    try {
+      setToast('Preparing high-res export...');
+      const canvas = await html2canvas(element, {
+        backgroundColor: null,
+        scale: 4,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.download = `QR_Nexus_${activeTab}_${Date.now()}.png`;
+      a.href = dataUrl;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      saveQRCode();
+      setToast('QR Code with Frame downloaded!');
+      setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      console.error('Export failed', err);
+      alert('Export failed. Please try again later.');
     }
   };
 
   const handleShare = async () => {
-    const canvas = qrRef.current.querySelector('canvas');
+    const canvas = exportRef.current.querySelector('canvas');
     if (canvas && navigator.share) {
       canvas.toBlob(async (blob) => {
         if (!blob) return;
@@ -288,7 +255,7 @@ export default function Generator() {
     setBgColor(theme.bgColor);
   };
 
-  const [isDynamic, setIsDynamic] = useState(false);
+
 
   const handleLogoUpload = (e) => {
     const file = e.target.files[0];
@@ -512,33 +479,7 @@ export default function Generator() {
             </h2>
             
             <div className="space-y-8">
-              <div className={cn(
-                "flex items-center justify-between p-4 rounded-2xl border transition-all duration-300",
-                isDynamic ? "bg-violet-500/10 border-violet-500/30" : "bg-white/5 border-white/10"
-              )}>
-                <div>
-                  <h3 className="font-bold text-[var(--text)] flex items-center">
-                    <Zap className={cn("w-4 h-4 mr-2", isDynamic ? "text-yellow-400 fill-yellow-400" : "text-gray-400")} />
-                    Dynamic QR Code
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)]">Track scans and edit content anytime</p>
-                  {isDynamic && (
-                    <p className="text-[10px] text-pink-500 font-bold mt-1">Note: This will show a redirect link when scanned.</p>
-                  )}
-                </div>
-                <button 
-                  onClick={() => setIsDynamic(!isDynamic)}
-                  className={cn(
-                    "w-12 h-6 rounded-full transition-all relative",
-                    isDynamic ? "bg-violet-500" : "bg-white/10"
-                  )}
-                >
-                  <motion.div 
-                    animate={{ x: isDynamic ? 24 : 4 }}
-                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-md"
-                  />
-                </button>
-              </div>
+
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
@@ -633,41 +574,43 @@ export default function Generator() {
 
         {/* Right Sticky Preview */}
         <div className="lg:col-span-4 lg:sticky lg:top-28">
-          <div className="glass-card rounded-3xl p-6 text-center border-t border-t-white/20">
+          <div className="glass-card rounded-3xl p-6 text-center border-t border-t-white/20" style={{ backgroundColor: bgColor }}>
             <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)] mb-6 flex items-center justify-center">
               <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
               Live Preview
             </h3>
             
-            <div ref={qrRef} className={cn(
-              "p-8 rounded-2xl relative group mb-8 inline-block mx-auto transition-all duration-500",
-              selectedFrame === 'basic' && "border-8 border-pink-500 shadow-2xl pt-12 pb-8",
-              selectedFrame === 'minimal' && "border-2 border-white/20",
-              selectedFrame === 'badge' && "border-b-[40px] border-violet-600 rounded-b-none pb-0",
-              selectedFrame === 'promo' && "border-4 border-dashed border-yellow-400"
-            )} style={{ backgroundColor: bgColor === '#ffffff' ? '#ffffff' : 'var(--input-bg)' }}>
-              {selectedFrame === 'badge' && (
-                <div className="absolute bottom-[-32px] left-0 right-0 text-center text-[10px] font-black text-white tracking-widest">
-                  OFFICIAL QR
+            <div ref={exportRef} className="p-10 inline-block bg-transparent flex justify-center items-center">
+              <div className={cn(
+                "p-8 rounded-2xl relative group inline-block mx-auto transition-all duration-500",
+                selectedFrame === 'basic' && "border-8 border-pink-500 shadow-2xl pt-12 pb-8",
+                selectedFrame === 'minimal' && "border-2 border-white/20",
+                selectedFrame === 'badge' && "border-b-[40px] border-violet-600 rounded-b-none pb-0",
+                selectedFrame === 'promo' && "border-4 border-dashed border-yellow-400"
+              )} style={{ backgroundColor: bgColor }}>
+                {selectedFrame === 'badge' && (
+                  <div className="absolute bottom-[-32px] left-0 right-0 text-center text-[10px] font-black text-white tracking-widest">
+                    OFFICIAL QR
+                  </div>
+                )}
+                {selectedFrame === 'basic' && (
+                  <div className="absolute top-[-30px] left-0 right-0 text-center text-xs font-black text-pink-500 uppercase">
+                    SCAN ME
+                  </div>
+                )}
+                
+                <div className="p-2 rounded-xl" style={{ backgroundColor: bgColor }}>
+                  <QRCodeCanvas
+                    value={getQRValue() || 'https://qr-nexus.com'}
+                    size={512}
+                    bgColor={bgColor}
+                    fgColor={color}
+                    level="H"
+                    style={{ width: '200px', height: '200px' }}
+                    className="rounded-lg shadow-lg"
+                    imageSettings={logoUrl ? { src: logoUrl, height: 100, width: 100, excavate: true } : undefined}
+                  />
                 </div>
-              )}
-              {selectedFrame === 'basic' && (
-                <div className="absolute top-[-30px] left-0 right-0 text-center text-xs font-black text-pink-500 uppercase">
-                  SCAN ME
-                </div>
-              )}
-              
-              <div className="p-2 rounded-xl" style={{ backgroundColor: bgColor }}>
-                <QRCodeCanvas
-                  value={getQRValue() || 'https://qr-nexus.com'}
-                  size={512}
-                  bgColor={bgColor}
-                  fgColor={color}
-                  level="H"
-                  style={{ width: '200px', height: '200px' }}
-                  className="rounded-lg shadow-lg"
-                  imageSettings={logoUrl ? { src: logoUrl, height: 100, width: 100, excavate: true } : undefined}
-                />
               </div>
             </div>
 
