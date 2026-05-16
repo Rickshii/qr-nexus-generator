@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
+import html2canvas from 'html2canvas';
 import { 
   Download, Copy, Link, Wifi, Mail, FileText, Phone, MessageCircle, MapPin, 
   User, Smartphone, Send, Image as ImageIcon, Check, Palette, Settings, CreditCard, MessageSquare, Calendar, Zap, Sparkles, LayoutDashboard, Share2
@@ -81,6 +82,9 @@ export default function Generator() {
   const [logoUrl, setLogoUrl] = useState(null);
   
   const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [isDynamic, setIsDynamic] = useState(false);
+  const [shortId, setShortId] = useState(Math.random().toString(36).substring(7));
   const qrRef = useRef();
 
   const qrTypes = [
@@ -104,17 +108,23 @@ export default function Generator() {
   ];
 
   const getQRValue = () => {
+    if (isDynamic) {
+      return `${window.location.origin}/q/${shortId}`;
+    }
+
     switch (activeTab) {
       case 'url':
-        return url;
+        if (!url) return 'https://qr-nexus.com';
+        return url.startsWith('http') ? url : `https://${url}`;
       case 'text':
-        return text;
+        return text || 'Hello from QRNexus!';
       case 'wifi':
         return `WIFI:T:${wifiEncryption};S:${wifiSsid};P:${wifiPassword};H:${wifiHidden ? 'true' : ''};;`;
       case 'vcard':
         return `BEGIN:VCARD\nVERSION:3.0\nN:${vcard.lName};${vcard.fName};;;\nFN:${vcard.fName} ${vcard.lName}\nORG:${vcard.company}\nTITLE:${vcard.job}\nTEL;TYPE=CELL:${vcard.phone}\nEMAIL:${vcard.email}\nURL:${vcard.website}\nADR:;;${vcard.address};;;;\nEND:VCARD`;
       case 'whatsapp':
-        return `https://wa.me/${waPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`;
+        const cleanPhone = waPhone.replace(/[^0-9]/g, '');
+        return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`;
       case 'email':
         return `mailto:${emailAddress}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
       case 'phone':
@@ -122,16 +132,21 @@ export default function Generator() {
       case 'map':
         return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
       case 'app':
-        return appUrl;
+        return appUrl || 'https://apps.apple.com';
       case 'youtube':
+        if (!ytUrl) return 'https://youtube.com';
         return ytUrl.startsWith('http') ? ytUrl : `https://youtube.com/${ytUrl.startsWith('@') ? '' : '@'}${ytUrl}`;
       case 'instagram':
+        if (!igUrl) return 'https://instagram.com';
         return igUrl.startsWith('http') ? igUrl : `https://instagram.com/${igUrl.replace('@', '')}`;
       case 'facebook':
+        if (!fbUrl) return 'https://facebook.com';
         return fbUrl.startsWith('http') ? fbUrl : `https://facebook.com/${fbUrl}`;
       case 'telegram':
+        if (!tgUrl) return 'https://t.me';
         return tgUrl.startsWith('http') ? tgUrl : `https://t.me/${tgUrl.replace('@', '')}`;
       case 'spotify':
+        if (!spotifyUrl) return 'https://spotify.com';
         return spotifyUrl.startsWith('http') ? spotifyUrl : `https://open.spotify.com/search/${encodeURIComponent(spotifyUrl)}`;
       case 'upi':
         return `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${upiAmount}&cu=INR`;
@@ -143,6 +158,32 @@ export default function Generator() {
         return url;
     }
   };
+
+  // Persist Dynamic Mapping
+  useEffect(() => {
+    if (isDynamic) {
+      const mappings = JSON.parse(localStorage.getItem('qr_mappings') || '{}');
+      
+      // Calculate the static value that this dynamic QR should redirect to
+      let contentValue = '';
+      const type = activeTab;
+      
+      if (type === 'url') contentValue = url.startsWith('http') ? url : `https://${url}`;
+      else if (type === 'text') contentValue = text;
+      else if (type === 'wifi') contentValue = `WIFI:T:${wifiEncryption};S:${wifiSsid};P:${wifiPassword};H:${wifiHidden ? 'true' : ''};;`;
+      else if (type === 'whatsapp') contentValue = `https://wa.me/${waPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`;
+      else if (type === 'phone') contentValue = `tel:${phone}`;
+      else if (type === 'email') contentValue = `mailto:${emailAddress}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      else contentValue = url; // Fallback for other types
+
+      mappings[shortId] = {
+        content: contentValue || 'https://qr-nexus.com',
+        type: activeTab,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('qr_mappings', JSON.stringify(mappings));
+    }
+  }, [isDynamic, url, text, waPhone, waText, wifiSsid, wifiPassword, emailAddress, shortId, activeTab]);
 
   const saveQRCode = () => {
     const newQR = {
@@ -158,18 +199,37 @@ export default function Generator() {
     localStorage.setItem('savedQRs', JSON.stringify([newQR, ...saved].slice(0, 10)));
   };
 
-  const handleDownload = () => {
-    const canvas = qrRef.current.querySelector('canvas');
-    if (canvas) {
-      // Use toDataURL for maximum compatibility with "Open" and "Share" actions
-      const imgUrl = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.download = `QR_Code_${activeTab}.png`;
-      a.href = imgUrl;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      saveQRCode();
+  const handleDownload = async () => {
+    const element = qrRef.current;
+    if (element) {
+      try {
+        console.log('Starting high-res capture...');
+        // High-fidelity capture using html2canvas
+        const canvas = await html2canvas(element, {
+          backgroundColor: null,
+          scale: 4, // 4x resolution for premium printing
+          logging: true,
+          useCORS: true,
+          allowTaint: true
+        });
+        
+        console.log('Canvas generated successfully');
+        const imgUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.download = `QR_Nexus_${activeTab}_${Date.now()}.png`;
+        a.href = imgUrl;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        saveQRCode();
+        setToast('QR Code with Frame downloaded successfully!');
+        setTimeout(() => setToast(null), 3000);
+      } catch (err) {
+        console.error('Download error:', err);
+        alert('High-res export failed. Try standard download or check browser permissions.');
+      }
+    } else {
+      console.error('QR reference not found');
     }
   };
 
@@ -451,25 +511,28 @@ export default function Generator() {
             </h2>
             
             <div className="space-y-8">
-              <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
+              <div className={cn(
+                "flex items-center justify-between p-4 rounded-2xl border transition-all duration-300",
+                isDynamic ? "bg-violet-500/10 border-violet-500/30" : "bg-white/5 border-white/10"
+              )}>
                 <div>
                   <h3 className="font-bold text-[var(--text)] flex items-center">
-                    <Zap className="w-4 h-4 mr-2 text-yellow-400" />
+                    <Zap className={cn("w-4 h-4 mr-2", isDynamic ? "text-yellow-400 fill-yellow-400" : "text-gray-400")} />
                     Dynamic QR Code
                   </h3>
-                  <p className="text-xs text-[var(--text-muted)]">Track scans and change URL later</p>
+                  <p className="text-xs text-[var(--text-muted)]">Track scans and edit content anytime</p>
                 </div>
                 <button 
                   onClick={() => setIsDynamic(!isDynamic)}
                   className={cn(
                     "w-12 h-6 rounded-full transition-all relative",
-                    isDynamic ? "bg-pink-500" : "bg-gray-700"
+                    isDynamic ? "bg-violet-500" : "bg-white/10"
                   )}
                 >
-                  <div className={cn(
-                    "w-4 h-4 bg-white rounded-full absolute top-1 transition-all",
-                    isDynamic ? "right-1" : "left-1"
-                  )} />
+                  <motion.div 
+                    animate={{ x: isDynamic ? 24 : 4 }}
+                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-md"
+                  />
                 </button>
               </div>
 
@@ -512,7 +575,10 @@ export default function Generator() {
                       style={{ backgroundColor: t.bgColor }}
                     >
                       <div className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: t.color }}></div>
-                      <span className="text-[10px] font-bold text-[var(--text)]/70 group-hover:text-[var(--text)] transition-colors">{t.name}</span>
+                      <span className={cn(
+                        "text-[10px] font-bold transition-colors",
+                        t.bgColor === '#ffffff' || t.bgColor === '#f8fafc' ? "text-gray-900" : "text-white"
+                      )}>{t.name}</span>
                       {/* Decorative gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none"></div>
                     </button>
@@ -569,11 +635,11 @@ export default function Generator() {
               Live Preview
             </h3>
             
-            <div className={cn(
+            <div ref={qrRef} className={cn(
               "p-8 rounded-2xl relative group mb-8 inline-block mx-auto transition-all duration-500",
-              selectedFrame === 'basic' && "border-8 border-pink-500 shadow-2xl",
+              selectedFrame === 'basic' && "border-8 border-pink-500 shadow-2xl pt-12 pb-8",
               selectedFrame === 'minimal' && "border-2 border-white/20",
-              selectedFrame === 'badge' && "border-b-[40px] border-violet-600 rounded-b-none",
+              selectedFrame === 'badge' && "border-b-[40px] border-violet-600 rounded-b-none pb-0",
               selectedFrame === 'promo' && "border-4 border-dashed border-yellow-400"
             )} style={{ backgroundColor: bgColor === '#ffffff' ? '#ffffff' : 'var(--input-bg)' }}>
               {selectedFrame === 'badge' && (
@@ -587,7 +653,7 @@ export default function Generator() {
                 </div>
               )}
               
-              <div ref={qrRef} className="p-2 rounded-xl" style={{ backgroundColor: bgColor }}>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: bgColor }}>
                 <QRCodeCanvas
                   value={getQRValue() || 'https://qr-nexus.com'}
                   size={512}
@@ -602,6 +668,20 @@ export default function Generator() {
             </div>
 
             <div className="space-y-3">
+              <AnimatePresence>
+                {toast && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="bg-emerald-500/20 text-emerald-400 p-3 rounded-xl border border-emerald-500/30 text-xs font-bold mb-4 flex items-center justify-center"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    {toast}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
               <button onClick={handleDownload} className="w-full bg-[var(--text)] text-[var(--bg)] font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-all hover:scale-[1.02] active:scale-[0.98]">
                 <Download className="w-5 h-5" />
                 <span>Download QR Code</span>

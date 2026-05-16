@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Generator from './pages/Generator';
+import Redirect from './pages/Redirect';
 import Navbar from './components/Navbar';
 import { AnimatePresence } from 'framer-motion';
 
@@ -34,6 +35,7 @@ function RoutesWrapper() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/generator" element={<Generator />} />
+        <Route path="/q/:id" element={<Redirect />} />
       </Routes>
     </AnimatePresence>
   );
