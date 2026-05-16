@@ -114,7 +114,7 @@ export default function Navbar() {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="md:hidden absolute top-full left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 p-6 flex flex-col space-y-4"
+          className="md:hidden absolute top-full left-0 right-0 bg-[var(--bg)]/95 backdrop-blur-xl border-b border-white/10 p-6 flex flex-col space-y-4"
         >
           {links.map((link) => (
             <Link key={link.name} to={link.path} className="text-lg font-medium text-[var(--text-muted)]" onClick={() => setMobileMenuOpen(false)}>
