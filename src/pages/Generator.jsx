@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-import html2canvas from 'html2canvas';
+import domtoimage from 'dom-to-image-more';
 import { 
   Download, Copy, Link, Wifi, Mail, FileText, Phone, MessageCircle, MapPin, 
   User, Smartphone, Send, Image as ImageIcon, Check, Palette, Settings, CreditCard, MessageSquare, Calendar, Zap, Sparkles, LayoutDashboard, Share2
@@ -121,7 +121,7 @@ export default function Generator() {
       case 'wifi':
         return `WIFI:T:${wifiEncryption};S:${wifiSsid};P:${wifiPassword};H:${wifiHidden ? 'true' : ''};;`;
       case 'vcard':
-        return `BEGIN:VCARD\nVERSION:3.0\nN:${vcard.lName};${vcard.fName};;;\nFN:${vcard.fName} ${vcard.lName}\nORG:${vcard.company}\nTITLE:${vcard.job}\nTEL;TYPE=CELL:${vcard.phone}\nEMAIL:${vcard.email}\nURL:${vcard.website}\nADR:;;${vcard.address};;;;\nEND:VCARD`;
+        return `BEGIN:VCARD\r\nVERSION:3.0\r\nN:${vcard.lName};${vcard.fName};;;\r\nFN:${vcard.fName} ${vcard.lName}\r\nORG:${vcard.company}\r\nTITLE:${vcard.job}\r\nTEL;TYPE=CELL:${vcard.phone}\r\nEMAIL;TYPE=PREF,INTERNET:${vcard.email}\r\nURL:${vcard.website}\r\nADR;TYPE=WORK:;;${vcard.address};;;;\r\nEND:VCARD`;
       case 'whatsapp':
         const cleanPhone = waPhone.replace(/[^0-9]/g, '');
         return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`;
@@ -203,33 +203,34 @@ export default function Generator() {
     const element = qrRef.current;
     if (element) {
       try {
-        console.log('Starting high-res capture...');
-        // High-fidelity capture using html2canvas
-        const canvas = await html2canvas(element, {
-          backgroundColor: null,
-          scale: 4, // 4x resolution for premium printing
-          logging: true,
-          useCORS: true,
-          allowTaint: true
-        });
+        setToast('Preparing high-res export...');
         
-        console.log('Canvas generated successfully');
-        const imgUrl = canvas.toDataURL('image/png');
+        // Use dom-to-image for better Tailwind/CSS frame support
+        const dataUrl = await domtoimage.toPng(element, {
+          quality: 1.0,
+          bgcolor: bgColor === '#ffffff' ? '#ffffff' : '#121212',
+          style: {
+            transform: 'scale(2)',
+            transformOrigin: 'top left'
+          },
+          width: element.clientWidth * 2,
+          height: element.clientHeight * 2
+        });
+
         const a = document.createElement('a');
-        a.download = `QR_Nexus_${activeTab}_${Date.now()}.png`;
-        a.href = imgUrl;
+        a.download = `QR_Nexus_Pro_${activeTab}_${Date.now()}.png`;
+        a.href = dataUrl;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        
         saveQRCode();
-        setToast('QR Code with Frame downloaded successfully!');
+        setToast('QR Code with Frame downloaded!');
         setTimeout(() => setToast(null), 3000);
       } catch (err) {
         console.error('Download error:', err);
-        alert('High-res export failed. Try standard download or check browser permissions.');
+        alert('Export failed. Please try again or use the Share button.');
       }
-    } else {
-      console.error('QR reference not found');
     }
   };
 
@@ -521,6 +522,9 @@ export default function Generator() {
                     Dynamic QR Code
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">Track scans and edit content anytime</p>
+                  {isDynamic && (
+                    <p className="text-[10px] text-pink-500 font-bold mt-1">Note: This will show a redirect link when scanned.</p>
+                  )}
                 </div>
                 <button 
                   onClick={() => setIsDynamic(!isDynamic)}
