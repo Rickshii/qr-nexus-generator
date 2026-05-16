@@ -92,14 +92,32 @@ export default function Dashboard() {
           
           <div className="h-[250px] relative flex items-center justify-center">
             {/* Simulated Map Background */}
-            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/world-map.png')] bg-contain bg-no-repeat bg-center invert grayscale"></div>
+            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/world-map.png')] bg-contain bg-no-repeat bg-center invert grayscale brightness-150"></div>
             
-            {/* Animated Pulse Points */}
-            <div className="absolute top-[30%] left-[20%] w-3 h-3 bg-pink-500 rounded-full animate-ping"></div>
-            <div className="absolute top-[40%] right-[30%] w-3 h-3 bg-violet-500 rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
-            <div className="absolute bottom-[20%] left-[40%] w-3 h-3 bg-emerald-500 rounded-full animate-ping" style={{ animationDelay: '2s' }}></div>
+            {/* Pulsing Scan Locations */}
+            <div className="absolute top-[35%] left-[25%]">
+              <div className="w-3 h-3 bg-pink-500 rounded-full relative">
+                <div className="absolute inset-0 bg-pink-500 rounded-full animate-ping opacity-75"></div>
+              </div>
+            </div>
+            <div className="absolute top-[45%] right-[35%]">
+              <div className="w-3 h-3 bg-violet-500 rounded-full relative">
+                <div className="absolute inset-0 bg-violet-500 rounded-full animate-ping opacity-75 animation-delay-1000"></div>
+              </div>
+            </div>
+            <div className="absolute bottom-[25%] left-[45%]">
+              <div className="w-3 h-3 bg-emerald-500 rounded-full relative">
+                <div className="absolute inset-0 bg-emerald-500 rounded-full animate-ping opacity-75 animation-delay-2000"></div>
+              </div>
+            </div>
             
-            <p className="relative z-10 text-[var(--text-muted)] font-medium">Interactive Scan Data Loading...</p>
+            <div className="relative z-10 text-center bg-[var(--bg)]/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl">
+              <p className="text-[var(--text)] font-black text-xl mb-1">LIVE ACTIVITY</p>
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                <p className="text-[var(--text-muted)] text-sm font-medium tracking-wider">3 GLOBAL SCANS DETECTED</p>
+              </div>
+            </div>
           </div>
         </motion.div>
 

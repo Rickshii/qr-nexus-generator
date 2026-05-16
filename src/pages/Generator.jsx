@@ -265,7 +265,7 @@ export default function Generator() {
                     key={type.id}
                     onClick={() => setActiveTab(type.id)}
                     className={cn(
-                      "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300",
+                      "flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border transition-all duration-300",
                       isActive 
                         ? "border-pink-500 bg-pink-500/10 text-pink-400 shadow-[0_0_15px_rgba(236,72,153,0.3)]" 
                         : "border-white/10 bg-white/5 hover:bg-white/10 text-[var(--text-muted)] hover:text-[var(--text)]"

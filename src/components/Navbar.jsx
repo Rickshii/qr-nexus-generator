@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { QrCode, Menu, X, Sparkles, LayoutDashboard, Sun, Moon, Zap, Flower2, Cloud } from 'lucide-react';
+import { QrCode, Menu, X, Sparkles, LayoutDashboard, Sun, Moon, Zap, Flower2, Cloud, ArrowUpRight } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -78,7 +78,7 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center space-x-6">
+        <div className="flex items-center space-x-4">
           <button 
             onClick={toggleTheme}
             className="p-2 hover:bg-white/10 rounded-xl transition-all text-[var(--text-muted)] hover:text-[var(--text)] border border-white/5"
@@ -90,17 +90,20 @@ export default function Navbar() {
             {theme === 'aura' && <Flower2 className="w-5 h-5 text-pink-400" />}
             {theme === 'forest' && <Cloud className="w-5 h-5 text-emerald-400" />}
           </button>
-          <Link to="/dashboard" className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors flex items-center space-x-1">
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard</span>
-          </Link>
-          <Link to="/generator" className="relative group overflow-hidden rounded-full p-[1px]">
-            <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 rounded-full opacity-70 group-hover:opacity-100 transition-opacity duration-300 animate-spin-slow"></span>
-            <div className="relative bg-[var(--bg)] px-5 py-2 rounded-full flex items-center space-x-2 transition-all duration-300 group-hover:bg-opacity-0">
-              <Sparkles className="w-4 h-4 text-pink-400 group-hover:text-[var(--text)] transition-colors" />
-              <span className="text-sm font-bold text-[var(--text)]">Create QR</span>
-            </div>
-          </Link>
+
+          <div className="hidden md:flex items-center space-x-6">
+            <Link to="/dashboard" className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors flex items-center space-x-1">
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Dashboard</span>
+            </Link>
+            <Link to="/generator" className="relative group overflow-hidden rounded-full p-[1px]">
+              <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 rounded-full opacity-70 group-hover:opacity-100 transition-opacity duration-300 animate-spin-slow"></span>
+              <div className="relative bg-[var(--bg)] px-5 py-2 rounded-full flex items-center space-x-2 transition-all duration-300 group-hover:bg-opacity-0">
+                <Sparkles className="w-4 h-4 text-pink-400 group-hover:text-[var(--text)] transition-colors" />
+                <span className="text-sm font-bold text-[var(--text)]">Create QR</span>
+              </div>
+            </Link>
+          </div>
         </div>
 
         {/* Mobile Toggle */}
@@ -117,8 +120,9 @@ export default function Navbar() {
           className="md:hidden absolute top-full left-0 right-0 bg-[var(--bg)]/95 backdrop-blur-xl border-b border-white/10 p-6 flex flex-col space-y-4"
         >
           {links.map((link) => (
-            <Link key={link.name} to={link.path} className="text-lg font-medium text-[var(--text-muted)]" onClick={() => setMobileMenuOpen(false)}>
-              {link.name}
+            <Link key={link.name} to={link.path} className="text-lg font-medium text-[var(--text-muted)] hover:text-pink-500 transition-colors flex items-center justify-between" onClick={() => setMobileMenuOpen(false)}>
+              <span>{link.name}</span>
+              <ArrowUpRight className="w-4 h-4 opacity-50" />
             </Link>
           ))}
           <div className="h-px w-full bg-white/10 my-2"></div>

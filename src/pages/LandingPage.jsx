@@ -9,7 +9,13 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6 lg:px-8 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-between z-10">
+      <section className="relative pt-32 pb-20 px-6 lg:px-8 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-between z-10 overflow-visible">
+        {/* Background Blobs Container */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-72 h-72 bg-violet-600/30 rounded-full blur-[128px] animate-blob"></div>
+          <div className="absolute top-0 right-1/4 w-72 h-72 bg-pink-600/30 rounded-full blur-[128px] animate-blob animation-delay-2000"></div>
+        </div>
+        
         <div className="lg:w-1/2 text-center lg:text-left">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
